@@ -1,0 +1,66 @@
+name: Go Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*' # 只在推送符合版本标签的分支时触发
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'  
+      - name: Display Go version
+        run: go version
+      - name: Build Go executable
+        run: |
+          go build -o cmddir.exe ./main.go # 根据实际情况修改路径和文件名
+
+      - name: Upload executable as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cmddir
+          path: cmddir.exe
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: cmddir
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: release } = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: context.ref.replace('refs/tags/', ''),
+              name: `Release ${context.ref.replace('refs/tags/', '')}`,
+              draft: false,
+              prerelease: false
+            });
+
+            await github.rest.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.id,
+              name: 'cmddir.exe',
+              data: require('fs').readFileSync('cmddir.exe')
+            });
