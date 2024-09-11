@@ -21,7 +21,7 @@ jobs:
         run: go version
       - name: Build Go executable
         run: |
-          go build -o cmddir.exe ./main.go # 根据实际情况修改路径和文件名
+          GOOS=windows GOARCH=amd64 go build -o cmddir.exe ./main.go
 
       - name: Upload executable as artifact
         uses: actions/upload-artifact@v4
